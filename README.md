@@ -15,6 +15,6 @@ A series of DAGs/Workflows to help maintain the operation of Airflow
 * [log-cleanup](log-cleanup)
     * A maintenance workflow that you can deploy into Airflow to periodically clean out the task logs to avoid those getting too big.
 * [delete-broken-dags](delete-broken-dags)
-    * A maintenance workflow that you can deploy into Airflow to periodically delete DAG files and clean out entries in the ImportError table for DAGs which Airflow cannot parse or import properly. This ensures that the ImportError table is cleaned every day.
+    * A maintenance workflow that you can deploy into Airflow to periodically delete DAG files and clean out entries in the ParseImportError table for DAGs which Airflow cannot parse or import properly. This ensures that the ParseImportError table is cleaned every day.
 * [sla-miss-report](sla-miss-report)
     * DAG providing an extensive analysis report of SLA misses broken down on a daily, hourly, and task level

@@ -4,8 +4,9 @@ A maintenance workflow that you can deploy into Airflow to periodically delete b
 airflow trigger_dag airflow-delete-broken-dags
 
 """
-from airflow.models import DAG, ImportError
-from airflow.operators.python_operator import PythonOperator
+from airflow.models import DAG
+from airflow.models.errors import ParseImportError
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow import settings
 from datetime import timedelta
 import os
@@ -17,7 +18,6 @@ import airflow
 
 # airflow-delete-broken-dags
 DAG_ID = os.path.basename(__file__).replace(".pyc", "").replace(".py", "")
-START_DATE = airflow.utils.dates.days_ago(1)
 # How often to Run. @daily - Once a day at Midnight
 SCHEDULE_INTERVAL = "@daily"
 # Who is listed as the owner of this DAG in the Airflow Web Server
@@ -33,7 +33,6 @@ default_args = {
     'email': ALERT_EMAIL_ADDRESSES,
     'email_on_failure': True,
     'email_on_retry': False,
-    'start_date': START_DATE,
     'retries': 1,
     'retry_delay': timedelta(minutes=1)
 }
@@ -41,8 +40,7 @@ default_args = {
 dag = DAG(
     DAG_ID,
     default_args=default_args,
-    schedule_interval=SCHEDULE_INTERVAL,
-    start_date=START_DATE,
+    schedule=SCHEDULE_INTERVAL,
     tags=['teamclairvoyant', 'airflow-maintenance-dags']
 )
 if hasattr(dag, 'doc_md'):
@@ -70,7 +68,7 @@ def delete_broken_dag_files(**context):
     logging.info("session:                  " + str(session))
     logging.info("")
 
-    errors = session.query(ImportError).all()
+    errors = session.query(ParseImportError).all()
 
     logging.info(
         "Process will be removing broken DAG file(s) from the file system:"
@@ -97,5 +95,4 @@ def delete_broken_dag_files(**context):
 delete_broken_dag_files = PythonOperator(
     task_id='delete_broken_dag_files',
     python_callable=delete_broken_dag_files,
-    provide_context=True,
     dag=dag)

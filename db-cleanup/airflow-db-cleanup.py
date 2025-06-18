@@ -36,19 +36,15 @@ from datetime import timedelta
 import logging
 import os
 
-import airflow
 from airflow import settings
 from airflow.models import (
     DAG,
     DagModel,
     DagRun,
     Log,
-    SlaMiss,
-    TaskInstance,
-    Variable,
-    XCom,
+    Variable
 )
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.utils import timezone
 from airflow.version import version as airflow_version
 
@@ -61,7 +57,6 @@ now = timezone.utcnow
 
 # airflow-db-cleanup
 DAG_ID = os.path.basename(__file__).replace(".pyc", "").replace(".py", "")
-START_DATE = airflow.utils.dates.days_ago(1)
 # How often to Run. @daily - Once a day at Midnight (UTC)
 SCHEDULE_INTERVAL = "@daily"
 # Who is listed as the owner of this DAG in the Airflow Web Server
@@ -87,9 +82,9 @@ ENABLE_DELETE = True
 DATABASE_OBJECTS = [
     {
         "airflow_db_model": DagRun,
-        "age_check_column": DagRun.execution_date,
+        "age_check_column": DagRun.logical_date,
         "keep_last": True,
-        "keep_last_filters": [DagRun.external_trigger.is_(False)],
+        "keep_last_filters": [DagRun.triggered_by.is_(False)],
         "keep_last_group_by": DagRun.dag_id,
     },
     # {
@@ -187,14 +182,14 @@ except Exception as e:
 #     except Exception as e:
 #         logging.error(e)
 
-# Check for ImportError model
+# Check for ParseImportError model
 try:
-    from airflow.models import ImportError
+    from airflow.models.errors import ParseImportError
 
     DATABASE_OBJECTS.append(
         {
-            "airflow_db_model": ImportError,
-            "age_check_column": ImportError.timestamp,
+            "airflow_db_model": ParseImportError,
+            "age_check_column": ParseImportError.timestamp,
             "keep_last": False,
             "keep_last_filters": None,
             "keep_last_group_by": None,
@@ -242,7 +237,6 @@ default_args = {
     "email": ALERT_EMAIL_ADDRESSES,
     "email_on_failure": True,
     "email_on_retry": False,
-    "start_date": START_DATE,
     "retries": 1,
     "retry_delay": timedelta(minutes=1),
 }
@@ -250,8 +244,7 @@ default_args = {
 dag = DAG(
     DAG_ID,
     default_args=default_args,
-    schedule_interval=SCHEDULE_INTERVAL,
-    start_date=START_DATE,
+    schedule=SCHEDULE_INTERVAL,
 )
 if hasattr(dag, "doc_md"):
     dag.doc_md = __doc__
@@ -292,7 +285,6 @@ def print_configuration_function(**context):
 print_configuration = PythonOperator(
     task_id="print_configuration",
     python_callable=print_configuration_function,
-    provide_context=True,
     dag=dag,
 )
 
@@ -473,13 +465,12 @@ def analyze_db():
 
 
 analyze_op = PythonOperator(
-    task_id="analyze_query", python_callable=analyze_db, provide_context=True, dag=dag
+    task_id="analyze_query", python_callable=analyze_db, dag=dag
 )
 
 cleanup_session_op = PythonOperator(
     task_id="cleanup_sessions",
     python_callable=cleanup_sessions,
-    provide_context=True,
     dag=dag,
 )
 
@@ -490,7 +481,6 @@ for db_object in DATABASE_OBJECTS:
         task_id="cleanup_" + str(db_object["airflow_db_model"].__name__),
         python_callable=cleanup_function,
         params=db_object,
-        provide_context=True,
         dag=dag,
     )
 

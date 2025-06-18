@@ -13,12 +13,10 @@ from datetime import timedelta
 import airflow
 from airflow.configuration import conf
 from airflow.models import DAG, Variable
-from airflow.operators.bash_operator import BashOperator
-from airflow.operators.dummy_operator import DummyOperator
+from airflow.providers.standard.operators.bash import BashOperator
 
 # airflow-log-cleanup
 DAG_ID = os.path.basename(__file__).replace(".pyc", "").replace(".py", "")
-START_DATE = airflow.utils.dates.days_ago(1)
 try:
     BASE_LOG_FOLDER = conf.get("core", "BASE_LOG_FOLDER").rstrip("/")
 except Exception as e:
@@ -74,7 +72,6 @@ default_args = {
     'email': ALERT_EMAIL_ADDRESSES,
     'email_on_failure': True,
     'email_on_retry': False,
-    'start_date': START_DATE,
     'retries': 1,
     'retry_delay': timedelta(minutes=1)
 }
@@ -82,8 +79,7 @@ default_args = {
 dag = DAG(
     DAG_ID,
     default_args=default_args,
-    schedule_interval=SCHEDULE_INTERVAL,
-    start_date=START_DATE,
+    schedule=SCHEDULE_INTERVAL,
     tags=['teamclairvoyant', 'airflow-maintenance-dags']
 )
 if hasattr(dag, 'doc_md'):

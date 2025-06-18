@@ -5,7 +5,7 @@ airflow trigger_dag airflow-clear-missing-dags
 
 """
 from airflow.models import DAG, DagModel
-from airflow.operators.python_operator import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow import settings
 from datetime import timedelta
 import os
@@ -17,7 +17,6 @@ import airflow
 
 # airflow-clear-missing-dags
 DAG_ID = os.path.basename(__file__).replace(".pyc", "").replace(".py", "")
-START_DATE = airflow.utils.dates.days_ago(1)
 # How often to Run. @daily - Once a day at Midnight
 SCHEDULE_INTERVAL = "@daily"
 # Who is listed as the owner of this DAG in the Airflow Web Server
@@ -34,7 +33,6 @@ default_args = {
     'email': ALERT_EMAIL_ADDRESSES,
     'email_on_failure': True,
     'email_on_retry': False,
-    'start_date': START_DATE,
     'retries': 1,
     'retry_delay': timedelta(minutes=1)
 }
@@ -42,8 +40,7 @@ default_args = {
 dag = DAG(
     DAG_ID,
     default_args=default_args,
-    schedule_interval=SCHEDULE_INTERVAL,
-    start_date=START_DATE,
+    schedule=SCHEDULE_INTERVAL,
     tags=['teamclairvoyant', 'airflow-maintenance-dags']
 )
 if hasattr(dag, 'doc_md'):
@@ -122,5 +119,4 @@ def clear_missing_dags_fn(**context):
 clear_missing_dags = PythonOperator(
     task_id='clear_missing_dags',
     python_callable=clear_missing_dags_fn,
-    provide_context=True,
     dag=dag)

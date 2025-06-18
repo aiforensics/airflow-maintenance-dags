@@ -12,9 +12,9 @@ airflow trigger_dag airflow-kill-halted-tasks
 """
 from airflow.models import DAG, DagModel, DagRun, TaskInstance
 from airflow import settings
-from airflow.operators.python_operator \
+from airflow.providers.standard.operators.python \
     import PythonOperator, ShortCircuitOperator
-from airflow.operators.email_operator import EmailOperator
+from airflow.providers.smtp.operators.smtp import EmailOperator
 from sqlalchemy import and_
 from datetime import datetime, timedelta
 import os
@@ -26,7 +26,6 @@ import airflow
 
 # airflow-kill-halted-tasks
 DAG_ID = os.path.basename(__file__).replace(".pyc", "").replace(".py", "")
-START_DATE = airflow.utils.dates.days_ago(1)
 # How often to Run. @daily - Once a day at Midnight. @hourly - Once an Hour.
 SCHEDULE_INTERVAL = "@hourly"
 # Who is listed as the owner of this DAG in the Airflow Web Server
@@ -51,7 +50,6 @@ default_args = {
     'email': ALERT_EMAIL_ADDRESSES,
     'email_on_failure': True,
     'email_on_retry': False,
-    'start_date': START_DATE,
     'retries': 1,
     'retry_delay': timedelta(minutes=1)
 }
@@ -59,8 +57,7 @@ default_args = {
 dag = DAG(
     DAG_ID,
     default_args=default_args,
-    schedule_interval=SCHEDULE_INTERVAL,
-    start_date=START_DATE,
+    schedule=SCHEDULE_INTERVAL,
     tags=['teamclairvoyant', 'airflow-maintenance-dags']
 )
 if hasattr(dag, 'doc_md'):
@@ -371,7 +368,6 @@ def kill_halted_tasks_function(**context):
 kill_halted_tasks_op = PythonOperator(
     task_id='kill_halted_tasks',
     python_callable=kill_halted_tasks_function,
-    provide_context=True,
     dag=dag)
 
 
@@ -435,7 +431,6 @@ def branch_function(**context):
 email_or_not_branch = ShortCircuitOperator(
     task_id="email_or_not_branch",
     python_callable=branch_function,
-    provide_context=True,
     dag=dag)
 
 

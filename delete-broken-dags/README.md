@@ -1,7 +1,7 @@
 # Airflow Delete Broken DAGs
 
 A maintenance workflow that you can deploy into Airflow to periodically delete DAG files and clean out entries in the
-ImportError table for DAGs which Airflow cannot parse or import properly. This ensures that the ImportError table is cleaned every day.
+ParseImportError table for DAGs which Airflow cannot parse or import properly. This ensures that the ParseImportError table is cleaned every day.
 
 ## Deploy
 

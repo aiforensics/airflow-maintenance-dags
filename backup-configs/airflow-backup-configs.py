@@ -6,7 +6,7 @@ airflow trigger_dag airflow-backup-configs
 
 """
 from airflow.models import DAG, Variable
-from airflow.operators.python_operator import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.configuration import conf
 from datetime import datetime, timedelta
 import os
@@ -16,7 +16,6 @@ import subprocess
 # airflow-backup-configs
 DAG_ID = os.path.basename(__file__).replace(".pyc", "").replace(".py", "")
 # How often to Run. @daily - Once a day at Midnight
-START_DATE = airflow.utils.dates.days_ago(1)
 # Who is listed as the owner of this DAG in the Airflow Web Server
 SCHEDULE_INTERVAL = "@daily"
 # List of email address to send email alerts to if this job fails
@@ -39,7 +38,6 @@ default_args = {
     'email': ALERT_EMAIL_ADDRESSES,
     'email_on_failure': True,
     'email_on_retry': False,
-    'start_date': START_DATE,
     'retries': 1,
     'retry_delay': timedelta(minutes=1)
 }
@@ -47,8 +45,7 @@ default_args = {
 dag = DAG(
     DAG_ID,
     default_args=default_args,
-    schedule_interval=SCHEDULE_INTERVAL,
-    start_date=START_DATE,
+    schedule=SCHEDULE_INTERVAL,
     tags=['teamclairvoyant', 'airflow-maintenance-dags']
 )
 if hasattr(dag, 'doc_md'):
@@ -94,7 +91,6 @@ def print_configuration_fn(**context):
 print_configuration_op = PythonOperator(
     task_id='print_configuration',
     python_callable=print_configuration_fn,
-    provide_context=True,
     dag=dag)
 
 
@@ -155,7 +151,6 @@ def delete_old_backups_fn(**context):
 delete_old_backups_op = PythonOperator(
     task_id='delete_old_backups',
     python_callable=delete_old_backups_fn,
-    provide_context=True,
     dag=dag)
 
 
@@ -207,7 +202,6 @@ if BACKUPS_ENABLED.get("dag_directory"):
         task_id='backup_dag_directory',
         python_callable=general_backup_fn,
         params={"path_to_backup": conf.get("core", "DAGS_FOLDER")},
-        provide_context=True,
         dag=dag)
     print_configuration_op.set_downstream(backup_op)
     backup_op.set_downstream(delete_old_backups_op)
@@ -225,7 +219,6 @@ if BACKUPS_ENABLED.get("log_directory"):
             "path_to_backup": BASE_LOG_FOLDER,
             "target_directory_name": "logs"
         },
-        provide_context=True,
         dag=dag)
     print_configuration_op.set_downstream(backup_op)
     backup_op.set_downstream(delete_old_backups_op)
@@ -237,7 +230,6 @@ if BACKUPS_ENABLED.get("airflow_cfg"):
         params={
             "path_to_backup": (os.environ.get('AIRFLOW_HOME') if os.environ.get('AIRFLOW_HOME') is not None else "~/airflow/") + "/airflow.cfg"
         },
-        provide_context=True,
         dag=dag)
     print_configuration_op.set_downstream(backup_op)
     backup_op.set_downstream(delete_old_backups_op)
@@ -246,7 +238,6 @@ if BACKUPS_ENABLED.get("pip_packages"):
     backup_op = PythonOperator(
         task_id='backup_pip_packages',
         python_callable=pip_packages_backup_fn,
-        provide_context=True,
         dag=dag)
     print_configuration_op.set_downstream(backup_op)
     backup_op.set_downstream(delete_old_backups_op)

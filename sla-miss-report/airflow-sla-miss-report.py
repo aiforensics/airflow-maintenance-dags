@@ -7,7 +7,7 @@ import airflow
 from airflow import settings
 from airflow.models import DAG, DagRun, TaskInstance
 from airflow.models.serialized_dag import SerializedDagModel
-from airflow.operators.python import PythonOperator
+from airflow.providers.standard.operators.python import PythonOperator
 from airflow.utils.email import send_email
 from datetime import date, datetime, timedelta
 
@@ -16,7 +16,6 @@ from datetime import date, datetime, timedelta
 ################################
 
 DAG_ID = os.path.basename(__file__).replace(".pyc", "").replace(".py", "")
-START_DATE = airflow.utils.dates.days_ago(1)
 # How often to Run. @daily - Once a day at Midnight
 SCHEDULE_INTERVAL = "@daily"
 # Who is listed as the owner of this DAG in the Airflow Web Server
@@ -741,7 +740,6 @@ default_args = {
     'email': EMAIL_ADDRESSES,
     'email_on_failure': True,
     'email_on_retry': False,
-    'start_date': START_DATE,
     "retries": 1,
     "retry_delay": timedelta(minutes=5),
 }
@@ -749,7 +747,6 @@ default_args = {
 with DAG(DAG_ID,
          default_args=default_args,
          description="DAG generating the SLA miss report",
-         schedule_interval=SCHEDULE_INTERVAL,
-         start_date=START_DATE,
+         schedule=SCHEDULE_INTERVAL,
          tags=['teamclairvoyant', 'airflow-maintenance-dags']) as dag:
     sla_miss_report_task = PythonOperator(task_id="sla_miss_report", python_callable=sla_miss_report, dag=dag)
